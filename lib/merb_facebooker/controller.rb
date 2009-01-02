@@ -1,22 +1,24 @@
 module Facebooker
   module Merb
     module Controller
+      
       def self.included(controller)
         controller.extend(ClassMethods)
         controller.before :set_fbml_format
-        #controller.helper_attr :facebook_session_parameters
-        
       end
       
+      #
+      # Just returns the @facebook_session instance variable
+      # 
       def facebook_session
         @facebook_session
       end
       
-      def facebook_session_parameters
-        {:fb_sig_session_key=>params[:fb_sig_session_key]}
-      end
-      
-      
+      #
+      # Tries to secure the facebook_session, if it is not secured already, it tries to secure it 
+      # via the request parameter 'auth_token', if that doesn't work, it tries to use the parameters 
+      # from facebook (this could be in the request or via cookies [cookies in case of FBConnect]).
+      #
       def set_facebook_session
         session_set = session_already_secured? || secure_with_token! || secure_with_facebook_params!
         if session_set
@@ -26,16 +28,25 @@ module Facebooker
         session_set
       end
       
+      #
+      # initializes the @facebook_params instance using the method verified_facebook_params
+      #
       def facebook_params
         @facebook_params ||= verified_facebook_params
       end      
       
       private
       
+      #
+      # Ensures there is an existing facebook session, and if so, it ask if it is secured.
+      #
       def session_already_secured?
         (@facebook_session = session[:facebook_session]) && session[:facebook_session].secured?
       end
       
+      # 
+      # Use auth_token parameter for the creation of a facebook_session 
+      #
       def secure_with_token!
         if params['auth_token']
           @facebook_session = new_facebook_session
@@ -45,8 +56,13 @@ module Facebooker
         end
       end
       
+      #
+      # If the request is made from a facebook canvas, then it checks for the session key and the user
+      # from the facebook_params hash key
+      #
       def secure_with_facebook_params!
-        return unless request_is_for_a_facebook_canvas?
+        debugger
+        return if !request_is_for_a_facebook_canvas? && !using_facebook_connect?
         
         if ['user', 'session_key'].all? {|element| facebook_params[element]}
           @facebook_session = new_facebook_session
@@ -55,11 +71,17 @@ module Facebooker
         end
       end
       
+      #
+      # Resets the facebook_session
+      #
       def create_new_facebook_session_and_redirect!
         session[:facebook_session] = new_facebook_session
         throw :halt, redirect(session[:facebook_session].login_url) unless @installation_required 
       end
       
+      #
+      #  Facebooker Session Factory
+      #
       def new_facebook_session
         Facebooker::Session.create(Facebooker::Session.api_key, Facebooker::Session.secret_key)
       end
@@ -73,27 +95,51 @@ module Facebooker
         end
       end
             
+      #
+      # Helper method (acts as ActiveSupport's blank? method)
+      #
       def blank?(value)
         (value == '0' || value.nil? || value == '')        
       end
 
+      #
+      # Get all the parameters from facebook via the request or cookies...
+      # (Cookies have more presedence)
+      #
       def verified_facebook_params
-        facebook_sig_params = params.inject({}) do |collection, pair|
-          collection[pair.first.sub(/^fb_sig_/, '')] = pair.last if pair.first[0,7] == 'fb_sig_'
-          collection
+        if !request.cookies[Facebooker::Session.api_key].blank?
+          facebook_sig_params = request.cookies.inject({}) do |collection, pair|
+            if pair.first =~ /^#{Facebooker::Session.api_key}_(.+)/
+              collection[$1] = pair.last
+            end
+            collection
+          end
+        else
+          # same ol...
+          facebook_sig_params = params.inject({}) do |collection, pair|
+            collection[pair.first.sub(/^fb_sig_/, '')] = pair.last if pair.first[0,7] == 'fb_sig_'
+            collection
+          end
+          verify_signature(facebook_sig_params, params['fb_sig'])
         end
-        verify_signature(facebook_sig_params,params['fb_sig'])
-
+        
         facebook_sig_params.inject(Mash.new) do |collection, pair| 
           collection[pair.first] = facebook_parameter_conversions[pair.first].call(pair.last)
           collection
         end
       end
       
+      #
+      # Session timeout value
+      #
       def earliest_valid_session
         48.hours.ago
       end
       
+      
+      #
+      # Checks if the signature matches the hash made from the parameters (does not apply on FBConnect)
+      #
       def verify_signature(facebook_sig_params,expected_signature)
         raw_string = facebook_sig_params.map{ |*args| args.join('=') }.sort.join
         actual_sig = Digest::MD5.hexdigest([raw_string, Facebooker::Session.secret_key].join)
@@ -102,6 +148,9 @@ module Facebooker
         true
       end
       
+      #
+      # Parses the values from facebook_parameters
+      #
       def facebook_parameter_conversions
         @facebook_parameter_conversions ||= Hash.new do |hash, key| 
           lambda{|value| value}
@@ -114,6 +163,9 @@ module Facebooker
         )
       end
       
+      #
+      # Overwrite of the redirect method, if it is to a canvas, then use an fbml_redirect_tag
+      #
       def redirect(*args)
         if request_is_for_a_facebook_canvas?
           fbml_redirect_tag(*args)
@@ -129,6 +181,10 @@ module Facebooker
       
       def request_is_for_a_facebook_canvas?
         !params['fb_sig_in_canvas'].blank?
+      end
+      
+      def using_facebook_connect?
+        !cookies[Facebooker::Session.api_key].blank?
       end
       
       def application_is_installed?
@@ -151,7 +207,7 @@ module Facebooker
       end
       
       def set_fbml_format
-        params[:format]="fbml" if request_is_for_a_facebook_canvas?
+        params[:format] = "fbml" if request_is_for_a_facebook_canvas?
       end
       
       module ClassMethods

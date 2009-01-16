@@ -191,6 +191,30 @@ module Facebooker
         facebook_params['added']
       end
       
+      def ensure_has_status_update(options = {})
+        has_extended_permission?("status_update") || application_needs_permission("status_update", options)
+      end
+      
+      def ensure_has_photo_upload(options = {})
+        has_extended_permission?("photo_upload") || application_needs_permission("photo_upload", options)
+      end
+      
+      def ensure_has_create_listing(options = {})
+        has_extended_permission?("create_listing") || application_needs_permission("create_listing", options)
+      end
+      
+      def ensure_has_rsvp_event(options = {})
+        has_extended_permission?("rsvp_event") || application_needs_permission("rsvp_event", options)
+      end
+      
+      def application_needs_permission(perm, options = {})
+        throw :halt, redirect(facebook_session.permission_url(perm, options))
+      end
+      
+      def has_extended_permission?(perm)
+        params["fb_sig_ext_perms"] and params["fb_sig_ext_perms"].include?(perm)
+      end
+      
       def ensure_authenticated_to_facebook
         set_facebook_session || create_new_facebook_session_and_redirect!
       end

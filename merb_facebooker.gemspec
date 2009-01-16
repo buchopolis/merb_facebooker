@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.email = "vanpelt@doloreslabs.com"
   s.homepage = "http://merb-plugins.rubyforge.org/merb_facebooker/"
   s.add_dependency('merb-core', '>= 0.9.4')
-  s.add_dependency('facebooker')
+  s.add_dependency('facebooker', '>= 1.0.10')
   s.require_path = 'lib'
   s.autorequire = "merb_facebooker"
   s.files = %w(LICENSE README Rakefile TODO lib/merb_facebooker/controller.rb lib/merb_facebooker/helpers.rb lib/merb_facebooker/merbtasks.rb lib/merb_facebooker.rb spec/merb_facebooker_spec.rb spec/spec_helper.rb templates/config/facebooker.yml)

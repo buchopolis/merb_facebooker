@@ -1,10 +1,10 @@
-# make sure we're running inside Merb
+#make sure we're running inside Merb
 require 'merb_facebooker/controller'
 require 'merb_facebooker/helpers'
 
 if defined?(Merb::Plugins)
   dependency "facebooker"
-  dependency "merb_helpers"
+  dependency "merb-helpers"
   
   # Merb gives you a Merb::Plugins.config hash...feel free to put your stuff in your piece of it
   facebook_config = "#{Merb.root}/config/facebooker.yml"

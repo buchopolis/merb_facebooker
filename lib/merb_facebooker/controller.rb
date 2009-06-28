@@ -68,7 +68,6 @@ module Facebooker
       # from the facebook_params hash key
       #
       def secure_with_facebook_params!
-        debugger
         return if !request_is_for_a_facebook_canvas? && !using_facebook_connect?
         
         if ['user', 'session_key'].all? {|element| facebook_params[element]}
@@ -200,8 +199,8 @@ module Facebooker
       
       def ensure_has_status_update(options = {})
         has_extended_permission?("status_update") || application_needs_permission("status_update", options)
-      end
-      
+      end      
+  
       def ensure_has_photo_upload(options = {})
         has_extended_permission?("photo_upload") || application_needs_permission("photo_upload", options)
       end
@@ -224,6 +223,11 @@ module Facebooker
       
       def ensure_authenticated_to_facebook
         set_facebook_session || create_new_facebook_session_and_redirect!
+      end      
+        
+      def ensure_authenticated_with_connect
+        set_facebook_session
+        throw :halt, redirect(url(:index)) if (facebook_session.nil? || !using_facebook_connect?) 
       end
       
       def ensure_application_is_installed_by_facebook_user

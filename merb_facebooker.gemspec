@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = "merb_facebooker"
-  s.version = "0.0.2.5"
+  s.version = "0.0.2.6"
   s.platform = Gem::Platform::RUBY
   s.has_rdoc = true
   s.extra_rdoc_files = ["README", "LICENSE", 'TODO']

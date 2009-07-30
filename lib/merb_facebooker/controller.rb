@@ -9,7 +9,7 @@ module Facebooker
       def absolute_url(*args)
         options  = extract_options_from_args!(args) || {}
         options[:protocol] ||= request.protocol
-        options[:host] = Facebooker.canvas_server_base + Facebooker.facebook_path_prefix
+        options[:host] ||= Facebooker.canvas_server_base + Facebooker.facebook_path_prefix
         args << options
         super(*args)
       end
